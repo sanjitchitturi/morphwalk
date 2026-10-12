@@ -2,7 +2,7 @@
 
 A live finite-state lab for the first half of an NLP course. It is one static page: a lexicon automaton, a morphological transducer, and a word/sentence scanner. No install, no server, no network.
 
-Open `index.html`. The word **leaves** is already parsed into two accepting paths.
+The hosted demo is [https://sanjitchitturi.github.io/morphwalk/](https://sanjitchitturi.github.io/morphwalk/). Opening `index.html` locally does the same thing. The word **leaves** is already parsed into two accepting paths.
 
 ## What to show
 
