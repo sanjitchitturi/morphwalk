@@ -71,7 +71,16 @@ expectSet("being", ["be/V +PROG"]);
 expectSet("has", ["have/V +3SG"]);
 expectSet("had", ["have/V +PAST", "have/V +PP"]);
 expectSet("having", ["have/V +PROG"]);
-expectSet("this", []);
+expectSet("this", ["this/DET"]);
+expectSet("are", ["be/V +PRES"]);
+expectSet("said", ["say/V +PAST", "say/V +PP"]);
+expectSet("coming", ["come/V +PROG"]);
+expectSet("getting", ["get/V +PROG"]);
+expectSet("writing", ["write/V +PROG"]);
+expectSet("lives", ["live/V +3SG"]);
+expectSet("n't", ["not/PART"]);
+const clitic = glosses("'s");
+assert(clitic.indexOf("'s/POSS") !== -1 && clitic.indexOf("be/V +3SG") !== -1 && clitic.indexOf("have/V +3SG") !== -1, "'s readings " + clitic.join(", "));
 expectSet("gos", []);
 expectSet("goed", []);
 expectSet("leaved", []);
@@ -122,6 +131,11 @@ assert(kids.sentences.length === 1, "decimal is not a sentence boundary");
 
 const wont = M.tokenize("They won't go.");
 assert(wont.tokens.some(function (t) { return t.text === "will"; }) && wont.tokens.some(function (t) { return t.text === "n't"; }), "won't");
+
+const sample = M.analyzeDocument("The flies leave the wet leaves. Happy students studied harder.");
+assert(sample.stats.sentences === 2, "two sentences in sample");
+assert(sample.stats.unknown === 0, "sample should be fully covered, unknown " + sample.stats.unknown);
+assert(sample.stats.ambiguous >= 2, "flies and leaves are ambiguous");
 
 if (!process.exitCode) {
   console.log("ok");

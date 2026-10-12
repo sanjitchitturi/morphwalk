@@ -3,151 +3,49 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="A live finite-state lab for English morphology and tokenization." />
-  <title>MorphWalk — finite-state morphology</title>
+  <meta name="description" content="MorphWalk is a finite-state morphological parser for English." />
+  <title>MorphWalk — morphological parser</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="top">
-    <div class="wrap">
-      <div class="brand">
-        <div>
-          <p class="kicker">NLP lab · automata, morphology, tokenization</p>
-          <h1>MorphWalk</h1>
-        </div>
-        <button type="button" class="primary" id="tour-btn">Start class tour</button>
+    <div class="wrap brand">
+      <div>
+        <p class="kicker">Finite-state morphological parser</p>
+        <h1>MorphWalk</h1>
       </div>
-      <p class="lede">A finite-state transducer reads an English word and writes its stem, category, and inflection. Two accepting paths means the word is ambiguous.</p>
     </div>
+    <p class="lede wrap">Paste English text. Every word is run through a transducer that returns its lemma, category, and inflection. When a word has more than one reading, all of them are kept.</p>
   </header>
 
-  <div id="tourbar" hidden>
-    <div class="wrap tour-inner">
-      <div>
-        <p class="tour-kicker" id="tour-kicker"></p>
-        <p class="tour-claim" id="tour-claim"></p>
-        <p class="tour-say" id="tour-say" hidden></p>
+  <main class="wrap">
+    <form id="form" autocomplete="off">
+      <label for="source">Text</label>
+      <textarea id="source" rows="5" spellcheck="false">The flies leave the wet leaves. Happy students studied harder. The children walked to school, and their teacher loves reading.</textarea>
+      <div class="toolbar">
+        <button type="submit" class="primary">Analyze</button>
+        <div id="samples" class="chips"></div>
+        <button type="button" id="copy" class="ghost">Copy gloss</button>
       </div>
-      <div class="tour-actions">
-        <button type="button" id="say-btn" aria-expanded="false">What to say</button>
-        <button type="button" id="tour-prev">Back</button>
-        <button type="button" id="tour-next">Next</button>
-      </div>
+    </form>
+
+    <p id="stats" class="stats" aria-live="polite"></p>
+    <ul class="legend">
+      <li><span class="swatch amb"></span> more than one reading</li>
+      <li><span class="swatch oov"></span> not in the lexicon</li>
+      <li><span class="swatch closed"></span> closed class</li>
+    </ul>
+
+    <div class="work">
+      <div id="doc"></div>
+      <aside id="inspector" class="inspector" aria-live="polite"></aside>
     </div>
-  </div>
+  </main>
 
-  <div class="wrap">
-    <nav class="tabs" role="tablist">
-      <button type="button" class="tab on" id="tab-parse" role="tab" aria-selected="true">Parse a word</button>
-      <button type="button" class="tab" id="tab-lexicon" role="tab" aria-selected="false">Lexicon automaton</button>
-      <button type="button" class="tab" id="tab-tokens" role="tab" aria-selected="false">Tokenize</button>
-    </nav>
-
-    <main id="panel-parse" role="tabpanel">
-      <form id="parse-form" autocomplete="off">
-        <div class="field">
-          <label for="word">Surface word</label>
-          <input id="word" name="word" value="leaves" spellcheck="false" autocapitalize="none" autocorrect="off" />
-        </div>
-        <button type="submit">Parse</button>
-      </form>
-      <div id="chips" class="chips"></div>
-      <div class="modes" role="group" aria-label="Parser mode">
-        <button type="button" class="mode on" id="mode-lex" aria-pressed="true">Lexicon transducer</button>
-        <button type="button" class="mode" id="mode-free" aria-pressed="false">Lexicon-free rewriter</button>
-      </div>
-      <p id="banner" class="banner" aria-live="polite"></p>
-      <p id="status" class="status"></p>
-      <div class="split">
-        <section>
-          <h2>Input : output</h2>
-          <div id="tape"></div>
-          <div class="controls">
-            <button type="button" id="replay">Replay the path</button>
-            <button type="button" id="step">Step</button>
-            <span id="playhead" class="playhead"></span>
-          </div>
-          <ul class="legend" aria-label="Tape legend">
-            <li><span class="swatch"></span> copied</li>
-            <li><span class="swatch changed"></span> spelling change</li>
-            <li><span class="swatch boundary">^</span> boundary</li>
-            <li><span class="swatch eps">ε</span> epsilon</li>
-          </ul>
-          <p id="steptext" class="steptext"></p>
-          <h2>Morphotactics</h2>
-          <p class="hint">Which suffixes may follow which category. A path must finish on a double circle.</p>
-          <div id="morpho"></div>
-        </section>
-        <section id="side">
-          <h2>Accepting paths</h2>
-          <div id="cards"></div>
-          <h2>Lexicon-free cuts</h2>
-          <p class="hint">Peel a suffix and guess a stem. No spelling rules, so some guesses are the wrong shape.</p>
-          <div id="free"></div>
-        </section>
-      </div>
-    </main>
-
-    <main id="panel-lexicon" role="tabpanel" hidden>
-      <form id="probe-form" autocomplete="off">
-        <div class="field">
-          <label for="probe">Stem</label>
-          <input id="probe" value="hop" spellcheck="false" autocapitalize="none" autocorrect="off" />
-        </div>
-        <button type="submit">Walk</button>
-      </form>
-      <div id="fragment-chips" class="chips"></div>
-      <p id="probe-status" class="banner" aria-live="polite"></p>
-      <p id="fsa-stats" class="status"></p>
-      <ul class="legend" aria-label="Automaton legend">
-        <li><span class="swatch hot"></span> path taken</li>
-        <li><span class="swatch yes"></span> accept state</li>
-        <li><span class="swatch bad"></span> reject sink</li>
-      </ul>
-      <div id="trie"></div>
-      <p class="hint">This fragment is the lexicon as an FSA. <code>book</code> and <code>box</code> share a prefix, <code>hop</code> accepts and then continues to <code>hope</code>, and <code>leaf</code> and <code>leave</code> split after <code>lea</code>.</p>
-    </main>
-
-    <main id="panel-tokens" role="tabpanel" hidden>
-      <div class="field">
-        <label for="source">Text</label>
-        <textarea id="source" rows="3" spellcheck="false">Mr. Smith's children aren't leaving. Dr. Lee's flies love running.</textarea>
-      </div>
-      <div id="sample-chips" class="chips"></div>
-      <p id="token-status" class="status"></p>
-      <div class="scanfig">
-        <p class="hint">Scanner sketch. Whitespace returns to start and emits a token.</p>
-        <div class="scanrow">
-          <span class="state">start</span><span class="arrow">letter</span>
-          <span class="state">word</span><span class="arrow">'</span>
-          <span class="state">clitic</span>
-        </div>
-        <div class="scanrow">
-          <span class="state">start</span><span class="arrow">Mr. / Dr. / p.m.</span>
-          <span class="state">abbreviation</span>
-          <span class="quiet">the period stays inside the token</span>
-        </div>
-        <div class="scanrow">
-          <span class="state">word</span><span class="arrow">. ? !</span>
-          <span class="state yes">sentence end</span>
-        </div>
-      </div>
-      <ul class="legend" aria-label="Token legend">
-        <li><span class="swatch"></span> word</li>
-        <li><span class="swatch clitic"></span> clitic</li>
-        <li><span class="swatch abbrev"></span> abbreviation</li>
-        <li><span class="swatch number"></span> number</li>
-        <li><span class="swatch end"></span> sentence end</li>
-      </ul>
-      <div id="token-view"></div>
-      <p class="hint">Click a word to send it to the transducer. Clitics stay here: <code>'s</code> is ambiguous, and the parser does not see punctuation.</p>
-    </main>
-
-    <footer>
-      <p>Finite-state automata, ambiguity, English inflection, a finite-state lexicon, orthographic rules, lexicon-free rewriting, and word and sentence tokenization.</p>
-    </footer>
-  </div>
+  <footer class="wrap">
+    <p>A finite-state transducer: lexicon, morphotactics, and English spelling rules. Out-of-vocabulary names stay unanalyzed.</p>
+  </footer>
 
   <script src="engine.js"></script>
   <script src="ui.js"></script>

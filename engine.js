@@ -2,10 +2,10 @@
 
 /*
  * MorphWalk
- * A small English lexicon plus orthographic rules, compiled into alignments
- * a finite-state transducer can walk. Parsing a surface word means finding
- * every (lemma, category, feature) whose input side equals that word.
- * The lexicon is finite, so trying each lexical path is the algorithm.
+ * Finite-state morphological parser for English.
+ * A lexicon of stems, a morphotactics table, and spelling rules define the
+ * transducer. Parsing finds every (lemma, category, feature) whose surface
+ * side equals the token. Closed-class words and clitics are listed forms.
  */
 
 (function (root, factory) {
@@ -13,7 +13,20 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   root.MorphWalk = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
-  const POS_NAME = { N: "noun", V: "verb", ADJ: "adjective" };
+  const POS_NAME = {
+    N: "noun",
+    V: "verb",
+    ADJ: "adjective",
+    DET: "determiner",
+    PRON: "pronoun",
+    P: "preposition",
+    CONJ: "conjunction",
+    ADV: "adverb",
+    PART: "particle",
+    POSS: "possessive",
+    C: "complementizer",
+    MOD: "modal",
+  };
   const FEATS = {
     N: ["SG", "PL"],
     V: ["VB", "3SG", "PAST", "PP", "PROG"],
@@ -43,7 +56,9 @@
     COMP: "+COMP",
     SUPER: "+SUPER",
   };
-  const POS_ORDER = { N: 0, V: 1, ADJ: 2 };
+  const POS_ORDER = {
+    N: 0, V: 1, ADJ: 2, DET: 3, PRON: 4, P: 5, CONJ: 6, ADV: 7, PART: 8, POSS: 9, C: 10, MOD: 11,
+  };
   const FEAT_ORDER = {
     SG: 0,
     PL: 1,
@@ -55,6 +70,8 @@
     POS: 0,
     COMP: 1,
     SUPER: 2,
+    PRES: 5,
+    CL: 6,
   };
 
   const LEXICON = [
@@ -93,7 +110,169 @@
     { lemma: "late", pos: "ADJ" },
     { lemma: "red", pos: "ADJ" },
     { lemma: "hot", pos: "ADJ" },
+    { lemma: "wet", pos: "ADJ" },
+    { lemma: "warm", pos: "ADJ" },
+    { lemma: "hard", pos: "ADJ" },
+    { lemma: "small", pos: "ADJ" },
+    { lemma: "young", pos: "ADJ" },
+    { lemma: "old", pos: "ADJ" },
+    { lemma: "new", pos: "ADJ" },
+    { lemma: "long", pos: "ADJ" },
+    { lemma: "great", pos: "ADJ" },
+    { lemma: "high", pos: "ADJ" },
+    { lemma: "early", pos: "ADJ" },
+    { lemma: "good", pos: "ADJ", irregular: { COMP: "better", SUPER: "best" } },
+    { lemma: "bad", pos: "ADJ", irregular: { COMP: "worse", SUPER: "worst" } },
+    { lemma: "student", pos: "N" },
+    { lemma: "school", pos: "N" },
+    { lemma: "teacher", pos: "N" },
+    { lemma: "desk", pos: "N" },
+    { lemma: "house", pos: "N" },
+    { lemma: "day", pos: "N" },
+    { lemma: "time", pos: "N" },
+    { lemma: "hand", pos: "N" },
+    { lemma: "story", pos: "N" },
+    { lemma: "car", pos: "N" },
+    { lemma: "bird", pos: "N" },
+    { lemma: "room", pos: "N" },
+    { lemma: "friend", pos: "N" },
+    { lemma: "family", pos: "N" },
+    { lemma: "girl", pos: "N" },
+    { lemma: "boy", pos: "N" },
+    { lemma: "home", pos: "N" },
+    { lemma: "class", pos: "N" },
+    { lemma: "course", pos: "N" },
+    { lemma: "paper", pos: "N" },
+    { lemma: "word", pos: "N" },
+    { lemma: "person", pos: "N" },
+    { lemma: "world", pos: "N" },
+    { lemma: "name", pos: "N" },
+    { lemma: "night", pos: "N" },
+    { lemma: "morning", pos: "N" },
+    { lemma: "week", pos: "N" },
+    { lemma: "question", pos: "N" },
+    { lemma: "answer", pos: "N" },
+    { lemma: "water", pos: "N" },
+    { lemma: "mother", pos: "N" },
+    { lemma: "father", pos: "N" },
+    { lemma: "work", pos: "N" },
+    { lemma: "work", pos: "V" },
+    { lemma: "read", pos: "V", irregular: { PAST: "read", PP: "read" } },
+    { lemma: "want", pos: "V" },
+    { lemma: "look", pos: "V" },
+    { lemma: "ask", pos: "V" },
+    { lemma: "need", pos: "V" },
+    { lemma: "call", pos: "V" },
+    { lemma: "help", pos: "V" },
+    { lemma: "show", pos: "V" },
+    { lemma: "play", pos: "V" },
+    { lemma: "live", pos: "V" },
+    { lemma: "watch", pos: "V" },
+    { lemma: "open", pos: "V" },
+    { lemma: "start", pos: "V" },
+    { lemma: "learn", pos: "V" },
+    { lemma: "seem", pos: "V" },
+    { lemma: "use", pos: "V" },
+    { lemma: "say", pos: "V", irregular: { PAST: "said", PP: "said" } },
+    { lemma: "see", pos: "V", irregular: { PAST: "saw", PP: "seen" } },
+    { lemma: "come", pos: "V", irregular: { PAST: "came", PP: "come", PROG: "coming" } },
+    { lemma: "make", pos: "V", irregular: { PAST: "made", PP: "made" } },
+    { lemma: "take", pos: "V", irregular: { PAST: "took", PP: "taken" } },
+    { lemma: "know", pos: "V", irregular: { PAST: "knew", PP: "known" } },
+    { lemma: "think", pos: "V", irregular: { PAST: "thought", PP: "thought" } },
+    { lemma: "get", pos: "V", irregular: { PAST: "got", PP: "got" } },
+    { lemma: "give", pos: "V", irregular: { PAST: "gave", PP: "given" } },
+    { lemma: "find", pos: "V", irregular: { PAST: "found", PP: "found" } },
+    { lemma: "tell", pos: "V", irregular: { PAST: "told", PP: "told" } },
+    { lemma: "write", pos: "V", irregular: { PAST: "wrote", PP: "written" } },
+    { lemma: "teach", pos: "V", irregular: { PAST: "taught", PP: "taught" } },
+    { lemma: "keep", pos: "V", irregular: { PAST: "kept", PP: "kept" } },
+    { lemma: "do", pos: "V", irregular: { "3SG": "does", PAST: "did", PP: "done" } },
   ];
+
+  function closed(lemma, pos, plain) {
+    return { lemma: lemma, pos: pos, plain: plain, gloss: lemma + "/" + pos, explain: lemma + " is a closed-class " + plain + ". The lexicon stores the whole word, and no inflection is added." };
+  }
+
+  const CLOSED = {
+    the: [closed("the", "DET", "determiner")],
+    a: [closed("a", "DET", "determiner")],
+    an: [closed("an", "DET", "determiner")],
+    this: [closed("this", "DET", "determiner")],
+    that: [closed("that", "DET", "determiner"), closed("that", "C", "complementizer")],
+    these: [closed("these", "DET", "determiner")],
+    those: [closed("those", "DET", "determiner")],
+    some: [closed("some", "DET", "determiner")],
+    every: [closed("every", "DET", "determiner")],
+    no: [closed("no", "DET", "determiner")],
+    of: [closed("of", "P", "preposition")],
+    to: [closed("to", "P", "preposition")],
+    in: [closed("in", "P", "preposition")],
+    on: [closed("on", "P", "preposition")],
+    at: [closed("at", "P", "preposition")],
+    for: [closed("for", "P", "preposition")],
+    with: [closed("with", "P", "preposition")],
+    from: [closed("from", "P", "preposition")],
+    by: [closed("by", "P", "preposition")],
+    into: [closed("into", "P", "preposition")],
+    over: [closed("over", "P", "preposition")],
+    after: [closed("after", "P", "preposition")],
+    before: [closed("before", "P", "preposition")],
+    about: [closed("about", "P", "preposition")],
+    and: [closed("and", "CONJ", "conjunction")],
+    or: [closed("or", "CONJ", "conjunction")],
+    but: [closed("but", "CONJ", "conjunction")],
+    if: [closed("if", "CONJ", "conjunction")],
+    i: [closed("I", "PRON", "pronoun")],
+    you: [closed("you", "PRON", "pronoun")],
+    he: [closed("he", "PRON", "pronoun")],
+    she: [closed("she", "PRON", "pronoun")],
+    it: [closed("it", "PRON", "pronoun")],
+    we: [closed("we", "PRON", "pronoun")],
+    they: [closed("they", "PRON", "pronoun")],
+    me: [closed("me", "PRON", "pronoun")],
+    him: [closed("him", "PRON", "pronoun")],
+    them: [closed("them", "PRON", "pronoun")],
+    my: [closed("my", "DET", "possessive determiner")],
+    your: [closed("your", "DET", "possessive determiner")],
+    his: [closed("his", "DET", "possessive determiner")],
+    her: [closed("her", "DET", "possessive determiner"), closed("her", "PRON", "pronoun")],
+    its: [closed("its", "DET", "possessive determiner")],
+    our: [closed("our", "DET", "possessive determiner")],
+    their: [closed("their", "DET", "possessive determiner")],
+    not: [closed("not", "PART", "negation")],
+    very: [closed("very", "ADV", "adverb")],
+    just: [closed("just", "ADV", "adverb")],
+    so: [closed("so", "ADV", "adverb")],
+    then: [closed("then", "ADV", "adverb")],
+    than: [closed("than", "P", "preposition")],
+    as: [closed("as", "P", "preposition")],
+    up: [closed("up", "P", "preposition")],
+    out: [closed("out", "P", "preposition")],
+  };
+
+  const EXTRA = [
+    { surface: "are", lemma: "be", pos: "V", plain: "verb", feat: "PRES", featPlain: "present", gloss: "be/V +PRES", explain: "are is a suppletive present form of be. It is stored as a whole-word arc." },
+    { surface: "am", lemma: "be", pos: "V", plain: "verb", feat: "PRES", featPlain: "present, first person", gloss: "be/V +1SG", explain: "am is a suppletive present form of be." },
+    { surface: "were", lemma: "be", pos: "V", plain: "verb", feat: "PAST", featPlain: "past, plural", gloss: "be/V +PAST.PL", explain: "were is the past plural of be. was is the past singular." },
+  ];
+
+  const CLITICS = {
+    "n't": [{ lemma: "not", pos: "PART", plain: "negation", gloss: "not/PART", explain: "n't is the contracted form of not." }],
+    "'s": [
+      { lemma: "'s", pos: "POSS", plain: "possessive", gloss: "'s/POSS", explain: "'s can be the possessive clitic, as in Smith's." },
+      { lemma: "be", pos: "V", plain: "verb", feat: "3SG", featPlain: "clitic of is", gloss: "be/V +3SG", explain: "'s can be a reduced form of is." },
+      { lemma: "have", pos: "V", plain: "verb", feat: "3SG", featPlain: "clitic of has", gloss: "have/V +3SG", explain: "'s can be a reduced form of has." },
+    ],
+    "'re": [{ lemma: "be", pos: "V", plain: "verb", feat: "PRES", featPlain: "clitic of are", gloss: "be/V +PRES", explain: "'re is the clitic form of are." }],
+    "'ve": [{ lemma: "have", pos: "V", plain: "verb", feat: "VB", featPlain: "clitic of have", gloss: "have/V +VB", explain: "'ve is the clitic form of have." }],
+    "'ll": [{ lemma: "will", pos: "MOD", plain: "modal", gloss: "will/MOD", explain: "'ll is the clitic form of will." }],
+    "'m": [{ lemma: "be", pos: "V", plain: "verb", feat: "PRES", featPlain: "clitic of am", gloss: "be/V +1SG", explain: "'m is the clitic form of am." }],
+    "'d": [
+      { lemma: "would", pos: "MOD", plain: "modal", gloss: "would/MOD", explain: "'d can be the modal would." },
+      { lemma: "have", pos: "V", plain: "verb", feat: "PAST", featPlain: "clitic of had", gloss: "have/V +PAST", explain: "'d can be a reduced form of had." },
+    ],
+  };
 
   const FRAGMENT = [
     "big",
@@ -508,11 +687,27 @@
     return Array.from(map.values());
   }
 
+  function listedForm(surface, spec) {
+    return {
+      lemma: spec.lemma,
+      pos: spec.pos,
+      posName: spec.plain,
+      feat: spec.feat || "CL",
+      featPlain: spec.featPlain || spec.plain,
+      tag: spec.tag || "",
+      gloss: spec.gloss,
+      rule: spec.feat ? "listed" : "closed",
+      ruleTitle: spec.feat ? "Listed form" : "Closed class",
+      ruleExplain: spec.explain,
+      columns: [col(surface, spec.gloss)],
+    };
+  }
+
   function ambiguityKind(analyses) {
     if (analyses.length < 2) return "";
     const lemmas = new Set(analyses.map(function (a) { return a.lemma; }));
     const poss = new Set(analyses.map(function (a) { return a.pos; }));
-    if (lemmas.size > 1) return "Two lemmas fit this string.";
+    if (lemmas.size > 1) return lemmas.size === 2 ? "Two lemmas fit this string." : lemmas.size + " lemmas fit this string.";
     if (poss.size > 1) return "Same letters, two parts of speech.";
     return "One lemma. Two feature bundles share this surface form.";
   }
@@ -521,7 +716,7 @@
     const input = String(raw || "").trim().toLowerCase();
     const analyses = [];
     let candidates = 0;
-    if (/^[a-z]+$/.test(input)) {
+    if (/^[a-z']+$/.test(input)) {
       LEXICON.forEach(function (entry) {
         FEATS[entry.pos].forEach(function (feat) {
           candidates += 1;
@@ -542,6 +737,13 @@
             columns: built.columns,
           });
         });
+      });
+      const listed = CLITICS[input] || CLOSED[input] || [];
+      listed.forEach(function (spec) {
+        analyses.push(listedForm(input, spec));
+      });
+      EXTRA.forEach(function (spec) {
+        if (spec.surface === input) analyses.push(listedForm(input, spec));
       });
     }
     analyses.sort(function (a, b) {
@@ -759,6 +961,42 @@
     return expandWord(raw);
   }
 
+  function analyzeDocument(text) {
+    const tok = tokenize(text);
+    let ambiguous = 0;
+    let unknown = 0;
+    let analyzed = 0;
+    const sentences = tok.sentences.map(function (sentence) {
+      return {
+        tokens: sentence.map(function (token) {
+          const item = {
+            text: token.text,
+            type: token.type,
+            note: token.note || "",
+            parsed: null,
+          };
+          if (token.type === "word" || token.type === "clitic") {
+            item.parsed = analyze(token.text);
+            analyzed += 1;
+            if (!item.parsed.analyses.length) unknown += 1;
+            else if (item.parsed.analyses.length > 1) ambiguous += 1;
+          }
+          return item;
+        }),
+      };
+    });
+    return {
+      sentences: sentences,
+      stats: {
+        sentences: sentences.length,
+        tokens: tok.tokens.length,
+        analyzed: analyzed,
+        ambiguous: ambiguous,
+        unknown: unknown,
+      },
+    };
+  }
+
   function tokenize(text) {
     const clean = String(text || "").replace(/’/g, "'").replace(/[“”]/g, '"');
     const re = /Mr\.|Mrs\.|Ms\.|Dr\.|Prof\.|Sr\.|Jr\.|St\.|Gen\.|U\.S\.|U\.K\.|p\.m\.|a\.m\.|i\.e\.|e\.g\.|\d+(?:\.\d+)?|[A-Za-z]+n't|[A-Za-z]+'re|[A-Za-z]+'ve|[A-Za-z]+'ll|[A-Za-z]+'d|[A-Za-z]+'m|[A-Za-z]+'s|[A-Za-z]+(?:-[A-Za-z]+)*|[.?!]+|[,;:"()\-—–]/gi;
@@ -781,6 +1019,7 @@
     lexicon: LEXICON,
     fragment: FRAGMENT,
     analyze: analyze,
+    analyzeDocument: analyzeDocument,
     surfaceOf: surfaceOf,
     buildLexiconFsa: buildLexiconFsa,
     walkLexicon: walkLexicon,
